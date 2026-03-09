@@ -1,0 +1,44 @@
+[project]
+name = "caseware-take-home-exercise"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pylint>=4.0.5",
+    "pyright>=1.1.408",
+    "ruff>=0.15.5",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pyright]
+pythonVersion = "3.13"
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+
+[tool.pylint.main]
+py-version = "3.13"
+
+[tool.pylint.messages_control]
+disable = [
+  "C0111",
+  "C0114",
+]
+
+[tool.pylint.format]
+max-line-length = 88
