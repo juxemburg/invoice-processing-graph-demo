@@ -1,4 +1,6 @@
 research
+output
+
 # Python
 __pycache__/
 *.py[cod]
@@ -58,3 +60,4 @@ Thumbs.db
 # Logs
 *.log
 logs/
+thoughts/

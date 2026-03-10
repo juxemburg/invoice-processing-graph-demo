@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:ai.pydantic.dev)"
+      "WebFetch(domain:ai.pydantic.dev)",
+      "Bash(uv sync)",
+      "Bash(uv run invoice-agent --help)",
+      "Bash(uv run pytest tests/)",
+      "Bash(uv run python -c \"from pydantic_ai import Agent, BinaryContent; print\\(''OK''\\)\")",
+      "Bash(uv run python -c \":*)",
+      "Bash(uv run invoice-agent process --help)",
+      "Bash(uv run invoice-agent process --input /nonexistent)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(uv run invoice-agent --input /nonexistent)",
+      "Bash(uv run ruff check src/ tests/ --fix)",
+      "Bash(uv run pyright src/)",
+      "Bash(uv run pytest tests/integration/ -v)",
+      "Bash(uv run pytest tests/e2e/ -v)",
+      "Bash(uv add pydantic-settings)",
+      "Bash(uv run python -c \"from invoice_agent.settings import get_settings; print\\(''Import OK''\\)\")",
+      "Bash(uv run ruff check src/ tests/)",
+      "Bash(uv run ruff format src/ tests/ --check)"
     ]
   }
 }

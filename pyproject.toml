@@ -1,16 +1,30 @@
 [project]
-name = "caseware-take-home-exercise"
+name = "invoice-agent"
 version = "0.1.0"
-description = "Add your description here"
+description = "Invoice processing agent using pydantic-ai Graph"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pydantic-ai[anthropic]>=0.0.20",
+    "pydantic>=2.0",
+    "typer>=0.12",
+    "python-dotenv>=1.0",
+    "pydantic-settings>=2.13.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+invoice-agent = "invoice_agent.cli:app"
 
 [dependency-groups]
 dev = [
     "pylint>=4.0.5",
     "pyright>=1.1.408",
     "pytest>=9.0.2",
+    "pytest-asyncio>=0.23",
     "ruff>=0.15.5",
 ]
 
@@ -46,4 +60,5 @@ max-line-length = 88
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]  # if using src layout
+pythonpath = ["src"]
+asyncio_mode = "auto"
