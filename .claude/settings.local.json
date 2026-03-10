@@ -18,7 +18,9 @@
       "Bash(uv add pydantic-settings)",
       "Bash(uv run python -c \"from invoice_agent.settings import get_settings; print\\(''Import OK''\\)\")",
       "Bash(uv run ruff check src/ tests/)",
-      "Bash(uv run ruff format src/ tests/ --check)"
+      "Bash(uv run ruff format src/ tests/ --check)",
+      "WebSearch",
+      "WebFetch(domain:langfuse.com)"
     ]
   }
 }
