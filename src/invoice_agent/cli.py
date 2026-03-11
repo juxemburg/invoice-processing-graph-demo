@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import typer
@@ -14,7 +15,7 @@ from invoice_agent.graph import invoice_graph
 from invoice_agent.models.schemas import FinalReport
 from invoice_agent.nodes.pipeline import GraphState, ProcessNextInvoice
 from invoice_agent.settings import get_settings
-from invoice_agent.tracing import init_tracing
+from invoice_agent.tracing import capture_root_context, init_tracing
 
 app = typer.Typer(help="Invoice expense report agent.")
 
@@ -61,16 +62,32 @@ def process(
             from langfuse import get_client
 
             langfuse = get_client()
+            run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
             with langfuse.start_as_current_observation(
                 as_type="span",
-                name="invoice-agent-process",
+                name="invoice-agent-run",
                 input={
                     "invoice_count": len(paths),
                     "files": [p.name for p in paths],
                 },
+                metadata={
+                    "session_id": f"run_{run_id}",
+                    "user_id": "invoice-agent-cli",
+                    "tags": ["invoice-processing", "v0.1.0"],
+                    "release": "0.1.0",
+                },
             ) as root:
+                capture_root_context()
                 res = await invoice_graph.run(ProcessNextInvoice(), state=graph_state)
-                root.update(output={"total_spend": str(res.output.total_spend)})
+                report = res.output
+                root.update(
+                    output={
+                        "total_spend": str(report.total_spend),
+                        "spend_by_category": report.spend_by_category,
+                        "invoice_count": len(report.invoices),
+                        "issues_count": len(report.issues_and_assumptions),
+                    },
+                )
             langfuse.flush()
             return res
         return await invoice_graph.run(ProcessNextInvoice(), state=graph_state)

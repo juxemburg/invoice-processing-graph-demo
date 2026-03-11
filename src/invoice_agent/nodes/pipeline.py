@@ -25,7 +25,7 @@ from invoice_agent.services.normalizer import (
 )
 from invoice_agent.services.reporter import build_report
 from invoice_agent.services.validator import validate_extraction
-from invoice_agent.tracing import traced_node
+from invoice_agent.tracing import log_span_output, traced_node
 
 # ── Shared graph state ─────────────────────────────────────────────────────────
 # Holds only what must persist across the whole run:
@@ -55,7 +55,21 @@ class ProcessNextInvoice(BaseNode[GraphState]):
         """Route to next invoice or aggregate if all processed."""
         if ctx.state.current_index < len(ctx.state.image_paths):
             path = ctx.state.image_paths[ctx.state.current_index]
+            log_span_output(
+                {
+                    "decision": "process_next",
+                    "invoice_file": path.name,
+                    "index": ctx.state.current_index,
+                    "total_invoices": len(ctx.state.image_paths),
+                }
+            )
             return ExtractNode(path=path)
+        log_span_output(
+            {
+                "decision": "aggregate",
+                "total_processed": len(ctx.state.processed),
+            }
+        )
         return AggregateNode()
 
 
@@ -75,8 +89,22 @@ class ExtractNode(BaseNode[GraphState]):
         """Extract invoice data; on failure, record and skip."""
         try:
             extracted = await extract_invoice(self.path)
+            log_span_output(
+                {
+                    "vendor": extracted.vendor,
+                    "total_raw": extracted.total_raw,
+                    "extraction_confidence": extracted.extraction_confidence,
+                    "line_items_count": len(extracted.line_items),
+                }
+            )
             return ValidateNode(path=self.path, extracted=extracted)
         except Exception as exc:
+            log_span_output(
+                {
+                    "error": str(exc),
+                    "status": "extraction_failed",
+                }
+            )
             # VLM call failed after retries — log and skip this invoice
             print(f"[WARN] Extraction failed for {self.path.name}: {exc}")
             ctx.state.processed.append(
@@ -113,6 +141,13 @@ class ValidateNode(BaseNode[GraphState]):
     ) -> NormalizeNode | ProcessNextInvoice:
         """Validate extraction; skip invoice if invalid."""
         validation = validate_extraction(self.extracted)
+        log_span_output(
+            {
+                "is_valid": validation.is_valid,
+                "missing_fields": validation.missing_fields,
+                "warnings": validation.warnings,
+            }
+        )
 
         if not validation.is_valid:
             ctx.state.processed.append(
@@ -167,6 +202,16 @@ class NormalizeNode(BaseNode[GraphState]):
                 self.extracted.total_raw,
             ),
         )
+        log_span_output(
+            {
+                "total_raw": self.extracted.total_raw,
+                "total_normalized": str(normalized.total),
+                "date_raw": self.extracted.invoice_date_raw,
+                "date_normalized": normalized.invoice_date,
+                "currency_raw": self.extracted.currency_raw,
+                "currency_normalized": normalized.currency,
+            }
+        )
         return CategorizeNode(
             path=self.path,
             extracted=self.extracted,
@@ -195,6 +240,13 @@ class CategorizeNode(BaseNode[GraphState]):
     async def run(self, ctx: GraphRunContext[GraphState]) -> ProcessNextInvoice:
         """Categorize the invoice and append to processed list."""
         cat = await categorize_invoice(self.extracted)
+        log_span_output(
+            {
+                "category": cat.category,
+                "confidence": cat.confidence,
+                "notes": cat.notes,
+            }
+        )
 
         ctx.state.processed.append(
             ProcessedInvoice(
@@ -226,6 +278,16 @@ class AggregateNode(BaseNode[GraphState]):
     async def run(self, ctx: GraphRunContext[GraphState]) -> ReportNode:
         """Aggregate all processed invoices."""
         aggregation = aggregate(ctx.state.processed)
+        log_span_output(
+            {
+                "total_spend": str(aggregation.total_spend),
+                "spend_by_category": {
+                    k: str(v) for k, v in aggregation.spend_by_category.items()
+                },
+                "invoice_count": aggregation.invoice_count,
+                "failed_count": aggregation.failed_count,
+            }
+        )
         return ReportNode(aggregation=aggregation)
 
 
@@ -249,4 +311,10 @@ class ReportNode(BaseNode[GraphState, None, FinalReport]):
     async def run(self, ctx: GraphRunContext[GraphState]) -> End[FinalReport]:
         """Generate the final report and end the graph."""
         report = await build_report(ctx.state.processed, self.aggregation)
+        log_span_output(
+            {
+                "issues_count": len(report.issues_and_assumptions),
+                "invoice_count": len(report.invoices),
+            }
+        )
         return End(report)
