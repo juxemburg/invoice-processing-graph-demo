@@ -25,6 +25,7 @@ from invoice_agent.services.normalizer import (
 )
 from invoice_agent.services.reporter import build_report
 from invoice_agent.services.validator import validate_extraction
+from invoice_agent.tracing import traced_node
 
 # ── Shared graph state ─────────────────────────────────────────────────────────
 # Holds only what must persist across the whole run:
@@ -47,6 +48,7 @@ class GraphState:
 class ProcessNextInvoice(BaseNode[GraphState]):
     """Router node: dispatch to ExtractNode or AggregateNode."""
 
+    @traced_node
     async def run(
         self, ctx: GraphRunContext[GraphState]
     ) -> ExtractNode | AggregateNode:
@@ -66,6 +68,7 @@ class ExtractNode(BaseNode[GraphState]):
 
     path: Path = field(default_factory=Path)
 
+    @traced_node
     async def run(
         self, ctx: GraphRunContext[GraphState]
     ) -> ValidateNode | ProcessNextInvoice:
@@ -104,6 +107,7 @@ class ValidateNode(BaseNode[GraphState]):
     path: Path = field(default_factory=Path)
     extracted: ExtractedInvoice = field(default_factory=ExtractedInvoice)
 
+    @traced_node
     async def run(
         self, ctx: GraphRunContext[GraphState]
     ) -> NormalizeNode | ProcessNextInvoice:
@@ -152,6 +156,7 @@ class NormalizeNode(BaseNode[GraphState]):
         default_factory=lambda: ValidationResult(True, [], [])
     )
 
+    @traced_node
     async def run(self, ctx: GraphRunContext[GraphState]) -> CategorizeNode:
         """Normalize amount, date, and currency fields."""
         normalized = NormalizedFields(
@@ -186,6 +191,7 @@ class CategorizeNode(BaseNode[GraphState]):
         default_factory=lambda: ValidationResult(True, [], [])
     )
 
+    @traced_node
     async def run(self, ctx: GraphRunContext[GraphState]) -> ProcessNextInvoice:
         """Categorize the invoice and append to processed list."""
         cat = await categorize_invoice(self.extracted)
@@ -216,6 +222,7 @@ class CategorizeNode(BaseNode[GraphState]):
 class AggregateNode(BaseNode[GraphState]):
     """Run deterministic Decimal aggregation."""
 
+    @traced_node
     async def run(self, ctx: GraphRunContext[GraphState]) -> ReportNode:
         """Aggregate all processed invoices."""
         aggregation = aggregate(ctx.state.processed)
@@ -238,6 +245,7 @@ class ReportNode(BaseNode[GraphState, None, FinalReport]):
         )
     )
 
+    @traced_node
     async def run(self, ctx: GraphRunContext[GraphState]) -> End[FinalReport]:
         """Generate the final report and end the graph."""
         report = await build_report(ctx.state.processed, self.aggregation)

@@ -25,6 +25,16 @@ class Settings(BaseSettings):
     report_model: str = "anthropic:claude-haiku-4-5"
     ollama_base_url: str = "http://localhost:11434/v1"
 
+    # Langfuse (optional — tracing is disabled when keys are absent)
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str = "https://cloud.langfuse.com"
+
+    @property
+    def langfuse_enabled(self) -> bool:
+        """Return True when both Langfuse keys are configured."""
+        return bool(self.langfuse_public_key and self.langfuse_secret_key)
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

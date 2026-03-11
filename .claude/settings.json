@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv add langfuse)",
+      "Bash(uv run python -c \"from pydantic_ai import Agent; print\\([m for m in dir\\(Agent\\) if ''instru'' in m.lower\\(\\)]\\)\")",
+      "Bash(uv run python -c \"from pydantic_ai import Agent; help\\(Agent.instrument_all\\)\")",
+      "Bash(uv run python -c \"from pydantic_ai._instrumentation import InstrumentationSettings; help\\(InstrumentationSettings\\)\")",
+      "Bash(uv run python -c \"from pydantic_ai.agent import InstrumentationSettings; help\\(InstrumentationSettings\\)\")",
+      "Bash(git stash)",
+      "Bash(git stash pop)",
+      "Bash(uv run python -c \"from pydantic_graph import Graph, GraphRunResult; print\\(GraphRunResult.__module__, GraphRunResult.__qualname__\\)\")",
+      "Bash(uv run ruff format src/ tests/)",
+      "Bash(uv run pytest tests/unit/ -v)"
+    ]
+  }
+}

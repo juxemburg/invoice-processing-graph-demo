@@ -8,10 +8,13 @@ import json
 from pathlib import Path
 
 import typer
+from pydantic_graph import GraphRunResult
 
 from invoice_agent.graph import invoice_graph
+from invoice_agent.models.schemas import FinalReport
 from invoice_agent.nodes.pipeline import GraphState, ProcessNextInvoice
 from invoice_agent.settings import get_settings
+from invoice_agent.tracing import init_tracing
 
 app = typer.Typer(help="Invoice expense report agent.")
 
@@ -29,7 +32,10 @@ def process(
 ) -> None:
     """Process invoice images and produce a structured expense report."""
     # Validate settings early (fail fast if ANTHROPIC_API_KEY is missing)
-    get_settings()
+    settings = get_settings()
+
+    # Initialize tracing BEFORE any agent is created
+    init_tracing()
 
     if not input_folder.is_dir():
         typer.echo(f"Error: '{input_folder}' is not a directory.", err=True)
@@ -47,8 +53,30 @@ def process(
 
     typer.echo(f"Processing {len(image_paths)} invoice(s)...")
 
+    async def _run_graph(
+        paths: list[Path], graph_state: GraphState
+    ) -> GraphRunResult[GraphState, FinalReport]:
+        """Run the graph, optionally inside a Langfuse trace context."""
+        if settings.langfuse_enabled:
+            from langfuse import get_client
+
+            langfuse = get_client()
+            with langfuse.start_as_current_observation(
+                as_type="span",
+                name="invoice-agent-process",
+                input={
+                    "invoice_count": len(paths),
+                    "files": [p.name for p in paths],
+                },
+            ) as root:
+                res = await invoice_graph.run(ProcessNextInvoice(), state=graph_state)
+                root.update(output={"total_spend": str(res.output.total_spend)})
+            langfuse.flush()
+            return res
+        return await invoice_graph.run(ProcessNextInvoice(), state=graph_state)
+
     state = GraphState(image_paths=image_paths)
-    result = asyncio.run(invoice_graph.run(ProcessNextInvoice(), state=state))
+    result = asyncio.run(_run_graph(image_paths, state))
 
     json_output = json.dumps(dataclasses.asdict(result.output), indent=2)
 
