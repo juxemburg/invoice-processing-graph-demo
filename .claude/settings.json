@@ -12,7 +12,27 @@
       "Bash(uv run ruff format src/ tests/)",
       "Bash(uv run pytest tests/unit/ -v)",
       "WebFetch(domain:docs.langfuse.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(uv run ruff check src/invoice_agent/cli.py src/invoice_agent/tracing.py)",
+      "Bash(uv run python -c \"from langfuse import get_client; lf = get_client\\(\\); print\\([m for m in dir\\(lf\\) if ''trace'' in m.lower\\(\\) or ''current'' in m.lower\\(\\)]\\)\")",
+      "Bash(uv run python -c \":*)",
+      "Bash(uv run ruff format src/invoice_agent/cli.py)",
+      "Bash(uv run ruff check src/invoice_agent/tracing.py tests/unit/test_tracing.py)",
+      "Bash(uv run ruff format src/invoice_agent/services/eval_scoring.py tests/unit/test_eval_scoring.py)",
+      "Bash(uv run ruff check src/invoice_agent/services/eval_scoring.py tests/unit/test_eval_scoring.py)",
+      "Bash(uv run ruff check src/invoice_agent/services/eval_scoring.py tests/unit/test_eval_scoring.py --fix)",
+      "Bash(uv run pyright src/invoice_agent/services/eval_scoring.py)",
+      "Bash(uv run pytest tests/unit/test_eval_scoring.py -v)",
+      "Bash(npx langfuse-cli api --help)",
+      "Bash(npx langfuse-cli api observations list --help)",
+      "Bash(npx langfuse-cli api scores create --help)",
+      "Bash(npx langfuse-cli api traces list --help)",
+      "Bash(uv run ruff format src/invoice_agent/services/eval_client.py tests/integration/test_eval_client.py)",
+      "Bash(uv run ruff check src/invoice_agent/services/eval_client.py tests/integration/test_eval_client.py --fix)",
+      "Bash(uv run pyright src/invoice_agent/services/eval_client.py)"
+    ],
+    "additionalDirectories": [
+      "/Users/juxemburg/Documents/code_repos/caseware-take-home-exercise/thoughts/shared/plans"
     ]
   }
 }

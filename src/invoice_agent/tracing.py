@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import contextvars
+import dataclasses
 import functools
 import logging
+import os
 from pathlib import Path
 from typing import Any, Callable, TypeVar
+
+from pydantic import BaseModel
 
 from invoice_agent.settings import get_settings
 
@@ -87,11 +91,22 @@ def log_span_output(output: dict[str, Any]) -> None:
         span.update(output=output)
 
 
+_MIME_MAP: dict[str, str] = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".pdf": "application/pdf",
+}
+
+
 def _build_node_input(node: Any) -> dict[str, Any] | None:
     """Build span input from node dataclass fields.
 
-    Only includes simple types (str, int, float, bool, Path names)
-    to avoid logging large payloads.
+    Serializes Pydantic BaseModel fields via ``.model_dump()`` and
+    stdlib dataclass fields via ``dataclasses.asdict()``.  Simple
+    types (str, int, float, bool) and Path names are included
+    directly.  For Path fields pointing to existing files, adds
+    mime_type and size_kb for diagnostics.
     """
     if not hasattr(node, "__dataclass_fields__"):
         return None
@@ -99,7 +114,15 @@ def _build_node_input(node: Any) -> dict[str, Any] | None:
     for name in node.__dataclass_fields__:
         val = getattr(node, name, None)
         if isinstance(val, Path):
-            inp[name] = str(val.name)
+            inp["file"] = str(val.name)
+            if val.exists():
+                suffix = val.suffix.lower()
+                inp["mime_type"] = _MIME_MAP.get(suffix, "application/octet-stream")
+                inp["size_kb"] = round(os.path.getsize(val) / 1024, 1)
+        elif isinstance(val, BaseModel):
+            inp[name] = val.model_dump()
+        elif dataclasses.is_dataclass(val) and not isinstance(val, type):
+            inp[name] = dataclasses.asdict(val)
         elif isinstance(val, (str, int, float, bool)):
             inp[name] = val
     return inp or None
