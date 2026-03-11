@@ -22,6 +22,7 @@ invoice-agent = "invoice_agent.cli:app"
 
 [dependency-groups]
 dev = [
+    "ipykernel>=7.2.0",
     "pylint>=4.0.5",
     "pyright>=1.1.408",
     "pytest>=9.0.2",
