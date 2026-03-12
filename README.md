@@ -13,13 +13,37 @@ uv sync
 # Set your API key
 cp .env.example .env
 # Edit .env and add your ANTHROPIC_API_KEY
-
-# Process invoices
-uv run invoice-agent --input ./invoice_samples/
-
-# Write output to a file
-uv run invoice-agent --input ./invoice_samples/ --output output/report.json
 ```
+
+## Running the Scoring Script
+
+Process invoices using the `invoice-agent process` subcommand:
+
+```bash
+# Process invoices in the default samples directory
+uv run invoice-agent process --input ./invoice_samples/
+
+# Process invoices in a custom directory
+uv run invoice-agent process --input /path/to/your/invoices/
+
+# Write output to a specific file
+uv run invoice-agent process --input ./invoice_samples/ --output output/report.json
+```
+
+### CLI Options
+
+| Option     | Description                                     | Default       |
+| ---------- | ----------------------------------------------- | ------------- |
+| `--input`  | Path to the directory containing invoice images | Required      |
+| `--output` | Path to write the JSON report                   | `report.json` |
+
+The agent will:
+
+1. **Extract** structured data from each invoice image using a vision LLM
+2. **Validate** the extracted fields against the expected schema
+3. **Normalize** amounts and dates into canonical formats
+4. **Categorize** each expense via LLM
+5. **Aggregate** totals and generate a narrative JSON report
 
 ## Running Tests
 
@@ -31,5 +55,5 @@ uv run pytest tests/unit/ -v
 uv run pytest tests/integration/ -v
 
 # E2E tests (requires ANTHROPIC_API_KEY)
-uv run pytest tests/e2e/ -v
+ANTHROPIC_API_KEY=sk-ant-... uv run pytest tests/e2e/ -v
 ```
